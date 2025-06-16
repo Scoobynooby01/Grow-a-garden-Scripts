@@ -1,0 +1,17 @@
+queue_on_teleport([[
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/TomtomFH/grow-a-garden/refs/heads/main/main", true))()
+]])
+
+-- Private server access code
+local accessCode = "ece247e419febc4c8b29d8311b93cc59"
+local PlaceID = game.PlaceId
+
+-- Function to join private server
+function JoinPrivateServer()
+    pcall(function()
+        game:GetService("TeleportService"):TeleportToPrivateServer(PlaceID, accessCode, {game.Players.LocalPlayer})
+    end)
+end
+
+-- Execute the teleport
+JoinPrivateServer()
