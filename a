@@ -1,0 +1,43 @@
+-- Script to join a private server (works when executed in-game)
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+
+-- Your specific server details
+local PLACE_ID = 126884695634066  -- Your game's place ID
+local PRIVATE_SERVER_CODE = "ece247e419febc4c8b29d8311b93cc59"  -- Extracted from your share link
+
+-- Function to handle teleport
+function Teleport()
+    print("Attempting to join private server...")
+    
+    local success, errorMessage = pcall(function()
+        TeleportService:TeleportToPrivateServer(PLACE_ID, PRIVATE_SERVER_CODE, {player})
+    end)
+    
+    if success then
+        print("Teleport request sent...")
+    else
+        warn("Failed to join private server: " .. tostring(errorMessage))
+        print("Note: You might need to leave the current server first")
+        
+        -- Generate backup link
+        local link = "https://www.roblox.com/games/" .. PLACE_ID .. "?privateServerLinkCode=" .. PRIVATE_SERVER_CODE
+        print("Private server link: " .. link)
+        print("Copy this link and paste it in your browser to join")
+    end
+end
+
+-- Connect to TeleportService events
+local function TPreturner()
+    TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+        warn("Teleport failed: " .. tostring(errorMessage))
+    end)
+    
+    print("TPreturner initialized - teleport events connected")
+end
+
+-- Initialize and execute
+TPreturner()
+Teleport()
