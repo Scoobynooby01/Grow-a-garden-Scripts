@@ -1,0 +1,28 @@
+queue_on_teleport([[
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/TomtomFH/grow-a-garden/refs/heads/main/main", true))()
+]])
+
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+
+local accessCode = "ece247e419febc4c8b29d8311b93cc59"
+local placeId = 126884695634066
+
+local function teleportToPrivateServer()
+    local player = Players.LocalPlayer
+    
+    local teleportOptions = Instance.new("TeleportOptions")
+    teleportOptions.ServerInstanceId = accessCode
+    
+    local success, errorMessage = pcall(function()
+        TeleportService:TeleportAsync(placeId, {player}, teleportOptions)
+    end)
+    
+    if not success then
+        pcall(function()
+            TeleportService:TeleportToPrivateServer(placeId, accessCode, {player})
+        end)
+    end
+end
+
+teleportToPrivateServer()
