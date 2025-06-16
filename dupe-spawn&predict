@@ -1,0 +1,36 @@
+local scriptSource = [[
+    -- Queue the external garden loader so it runs after teleporting.
+    queue_on_teleport([[
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/TomtomFH/grow-a-garden/refs/heads/main/main", true))()
+    ]])
+    
+    local TeleportService = game:GetService("TeleportService")
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    
+    -- Wait until the local player is available.
+    while not player do
+        task.wait(0.1)
+        player = Players.LocalPlayer
+    end
+
+    local placeId = game.PlaceId
+    -- Your VIP server's reserved (invite) code from the URL.
+    local reservedServerCode = "ece247e419febc4c8b29d8311b93cc59"
+    
+    -- Attempt to teleport to the private server using the reserved code.
+    local success, err = pcall(function()
+        TeleportService:TeleportToPrivateServer(placeId, reservedServerCode, {player})
+    end)
+    
+    if not success then
+        warn("Teleport failed:", err)
+    end
+]]
+
+local loadedFunc = loadstring(scriptSource)
+if loadedFunc then
+    loadedFunc()
+else
+    error("Failed to compile the teleport script.")
+end
