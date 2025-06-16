@@ -1,0 +1,12 @@
+queue_on_teleport([[
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/TomtomFH/grow-a-garden/refs/heads/main/main", true))()
+]])
+
+local TeleportService = game:GetService("TeleportService")
+local player = game.Players.LocalPlayer
+local placeID = game.PlaceId
+
+-- Your VIP server invite code extracted from the link
+local reservedServerAccessCode = "ece247e419febc4c8b29d8311b93cc59"
+
+TeleportService:TeleportToPrivateServer(placeID, reservedServerAccessCode, {player})
