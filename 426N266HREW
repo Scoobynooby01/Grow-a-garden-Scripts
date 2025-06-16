@@ -1,0 +1,25 @@
+-- Simple script to join a private server
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+
+-- Replace these with your actual values
+local PLACE_ID = 126884695634066
+local PRIVATE_SERVER_CODE = "ece247e419febc4c8b29d8311b93cc59"
+
+-- Function to join private server
+local function joinPrivateServer()
+    local success, errorMessage = pcall(function()
+        TeleportService:TeleportToPrivateServer(PLACE_ID, PRIVATE_SERVER_CODE, {player})
+    end)
+    
+    if success then
+        print("Teleporting to private server...")
+    else
+        warn("Failed to join private server: " .. tostring(errorMessage))
+    end
+end
+
+-- Call the function to join
+joinPrivateServer()
