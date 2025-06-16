@@ -1,0 +1,23 @@
+queue_on_teleport([[
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/TomtomFH/grow-a-garden/refs/heads/main/main", true))()
+]])
+
+local TeleportService = game:GetService("TeleportService")
+local player = game.Players.LocalPlayer
+local placeId = game.PlaceId
+
+-- This is the code from your VIP server invite link:
+local inviteCode = "ece247e419febc4c8b29d8311b93cc59"
+
+-- Preferred method: use TeleportToPrivateServer with your invite (reserved) code.
+local success, err = pcall(function()
+    TeleportService:TeleportToPrivateServer(placeId, inviteCode, {player})
+end)
+
+-- Fallback: If the preferred method fails, try using the invite code as a job id.
+if not success then
+    warn("TeleportToPrivateServer failed: " .. tostring(err) .. "\nTrying TeleportToPlaceInstance with inviteCode as job id.")
+    pcall(function()
+        TeleportService:TeleportToPlaceInstance(placeId, inviteCode, {player})
+    end)
+end
