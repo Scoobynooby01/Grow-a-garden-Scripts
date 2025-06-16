@@ -1,15 +1,32 @@
+-- Private Server Teleport Script
 local TeleportService = game:GetService("TeleportService")
-local placeId = YOUR_ACTUAL_PLACE_ID_HERE  -- Replace with correct place ID
-local accessCode = "ece247e419febc4c8b29d8311b93cc59"  -- Your server's access code
-local player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
 
-local function joinPrivateServer(player)
-    TeleportService:TeleportToPrivateServer(placeId, accessCode, {player})
+-- Your private server access code
+local accessCode = "ece247e419febc4c8b29d8311b93cc59"
+local placeId = game.PlaceId -- Current game's place ID
+
+-- Function to teleport to private server
+local function teleportToPrivateServer()
+    local player = Players.LocalPlayer
+    
+    -- Create teleport options for private server
+    local teleportOptions = Instance.new("TeleportOptions")
+    teleportOptions.ServerInstanceId = accessCode
+    
+    -- Attempt teleport
+    local success, errorMessage = pcall(function()
+        TeleportService:TeleportAsync(placeId, {player}, teleportOptions)
+    end)
+    
+    if not success then
+        warn("Failed to teleport to private server: " .. tostring(errorMessage))
+        -- Fallback: try direct teleport method
+        pcall(function()
+            TeleportService:TeleportToPrivateServer(placeId, accessCode, {player})
+        end)
+    end
 end
 
-script.Parent.Touched:Connect(function(hit)
-    local player = game.Players:GetPlayerFromCharacter(hit.Parent)
-    if player then
-        joinPrivateServer(player)
-    end
-end)
+-- Execute teleport
+teleportToPrivateServer()
