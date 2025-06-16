@@ -1,0 +1,15 @@
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+
+local PLACE_ID = 126884695634066
+local PRIVATE_SERVER_CODE = "ece247e419febc4c8b29d8311b93cc59"
+
+function TPReturner()
+    TeleportService:TeleportToPrivateServer(PLACE_ID, PRIVATE_SERVER_CODE, {Players.LocalPlayer})
+end
+
+function Teleport()
+    TPReturner()
+end
+
+Teleport()
