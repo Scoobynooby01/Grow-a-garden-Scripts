@@ -1,0 +1,101 @@
+-- Unified Lucky Harvest Script (Client & Server in one file)
+-- This script creates a GUI button that, when clicked,
+-- tells the server to run your existing Give_Seed function
+-- to give the player a Candy Blossom seed and then displays a notification.
+
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
+local StarterGui = game:GetService("StarterGui")
+
+---------------------------------------------------------------------
+-- Utility: Ensure the RemoteEvent exists (named "LuckyHarvestEvent")
+---------------------------------------------------------------------
+local function getLuckyHarvestEvent()
+    local event = ReplicatedStorage:FindFirstChild("LuckyHarvestEvent")
+    if not event then
+        event = Instance.new("RemoteEvent")
+        event.Name = "LuckyHarvestEvent"
+        event.Parent = ReplicatedStorage
+    end
+    return event
+end
+
+---------------------------------------------------------------------
+-- SERVER SIDE: Listen for Lucky Harvest requests and award seed
+---------------------------------------------------------------------
+if RunService:IsServer() then
+    local ServerScriptService = game:GetService("ServerScriptService")
+    -- Require your decompiled Give_Seed module; ensure it's in ServerScriptService.Modules.GiveSeed
+    local GiveSeedModule = require(ServerScriptService.Modules.GiveSeed)
+
+    local event = getLuckyHarvestEvent()
+    print("⇒ [Server] LuckyHarvestEvent initialized; listening for Lucky Harvest requests...")
+
+    event.OnServerEvent:Connect(function(player, seedName, quantity)
+        if type(seedName) ~= "string" or seedName == "" then
+            warn("Invalid seed name provided by " .. player.Name)
+            return
+        end
+
+        quantity = tonumber(quantity) or 1
+
+        local success, err = pcall(function()
+            -- Call your existing Give_Seed function:
+            GiveSeedModule.Give_Seed(player, seedName, quantity)
+        end)
+
+        if success then
+            print("⇒ [Server] " .. player.Name .. " was awarded seed: " .. seedName)
+            -- Send a simple confirmation message back to the client.
+            event:FireClient(player, "Lucky Harvest! You got a Candy Blossom seed!")
+        else
+            warn("⇒ [Server] Give_Seed failed for " .. player.Name .. ": " .. tostring(err))
+        end
+    end)
+
+---------------------------------------------------------------------
+-- CLIENT SIDE: Create GUI button that triggers Lucky Harvest on click
+---------------------------------------------------------------------
+else
+    local player = Players.LocalPlayer
+    local event = getLuckyHarvestEvent()
+
+    -- Create a simple ScreenGui and button
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "LuckyHarvestGui"
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 300, 0, 50)
+    button.Position = UDim2.new(0.5, -150, 0.5, -25)
+    button.Text = "Lucky Harvest!"
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 24
+    button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.Parent = screenGui
+
+    button.MouseButton1Click:Connect(function()
+        print("⇒ [Client] " .. player.Name .. " requested a Candy Blossom seed!")
+        -- Fire the remote event; seedName must exactly match the object name in ServerStorage.Seed_Models
+        event:FireServer("CandyBlossom", 1)
+        -- Display a local notification immediately
+        StarterGui:SetCore("SendNotification", {
+            Title = "Lucky Harvest!";
+            Text = "You got a Candy Blossom seed!";
+            Duration = 3;
+        })
+    end)
+
+    -- Optionally, listen for a message from the server and display it also.
+    event.OnClientEvent:Connect(function(message)
+        StarterGui:SetCore("SendNotification", {
+            Title = "Lucky Harvest!";
+            Text = message;
+            Duration = 3;
+        })
+    end)
+end
