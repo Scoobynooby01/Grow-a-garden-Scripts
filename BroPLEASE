@@ -1,0 +1,130 @@
+-- Unified Lucky Harvest Script (Server + Client)
+-- This script is built to exactly use the in-game lucky harvest functionality.
+-- It first attempts to require your in-game Give_Seed module;
+-- if that’s not found, it uses the decompiled Give_Seed code provided.
+-- Requirements:
+--   • An InventoryService module must exist at ServerScriptService.Modules.InventoryService.
+--   • ServerStorage must have a folder named "Seed_Models" with an object named "CandyBlossom".
+--   • (Optional) The original Give_Seed module might be at ServerScriptService.Modules.GiveSeed.
+--   • A RemoteEvent named "LuckyHarvestEvent" will be created in ReplicatedStorage if it doesn't exist.
+
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+-- Utility: Ensure a RemoteEvent named "LuckyHarvestEvent" exists in ReplicatedStorage.
+local function getLuckyHarvestEvent()
+    local event = ReplicatedStorage:FindFirstChild("LuckyHarvestEvent")
+    if not event then
+        event = Instance.new("RemoteEvent")
+        event.Name = "LuckyHarvestEvent"
+        event.Parent = ReplicatedStorage
+    end
+    return event
+end
+
+-- Define constants for the seed we want to award.
+local SEED_NAME = "CandyBlossom"
+local SEED_QTY = 1
+
+if RunService:IsServer() then
+    -------------------------------
+    -- SERVER SIDE
+    -------------------------------
+    local giveSeedModule
+    local success, err = pcall(function()
+        giveSeedModule = require(ServerScriptService.Modules.GiveSeed)
+    end)
+    if not success or not giveSeedModule then
+        -- Fallback: Define Give_Seed inline using the decompiled code.
+        local tbl_2_upvr = {"Normal", "Gold", "Rainbow"}
+        local any_IsServer_result = RunService:IsServer()
+        local function Give_Seed(player, seedName, quantity, arg4)
+            assert(any_IsServer_result, "Not running on Server")
+            local InventoryService = require(ServerScriptService.Modules.InventoryService)
+            local var5 = "Normal"
+            if not table.find(tbl_2_upvr, var5) then
+                warn("Invalid variation given in Give_Seed, got " .. tostring(var5))
+            else
+                if quantity ~= nil and (type(quantity) ~= "number" or quantity <= 0) then
+                    return
+                end
+                if not ServerStorage:FindFirstChild("Seed_Models") or not ServerStorage.Seed_Models:FindFirstChild(seedName) then
+                    warn("Seed \"" .. seedName .. "\" does not exist")
+                    return
+                end
+                local foundIndex, foundObj = next(InventoryService:Find(player, "Seed", function(item)
+                    if item.ItemName == seedName and item.Variant == var5 then
+                        return true
+                    end
+                    return false
+                end))
+                if foundObj then
+                    local ItemData = foundObj.ItemData
+                    ItemData.Quantity = ItemData.Quantity + (quantity or 1)
+                else
+                    local newData = {}
+                    newData.ItemName = seedName
+                    newData.Quantity = quantity or 1
+                    newData.Variant = var5
+                    InventoryService:CreateItem(player, "Seed", newData)
+                end
+            end
+        end
+        giveSeedModule = { Give_Seed = Give_Seed }
+    end
+
+    local lhEvent = getLuckyHarvestEvent()
+    print("[Server] LuckyHarvestEvent active. Listening for lucky harvest requests...")
+    
+    lhEvent.OnServerEvent:Connect(function(player)
+        pcall(function()
+            giveSeedModule.Give_Seed(player, SEED_NAME, SEED_QTY)
+        end)
+        print("[Server] Awarded " .. SEED_NAME .. " seed to " .. player.Name)
+        -- Optionally, send back a confirmation message (this line merely relays text from the original code if it did so)
+        lhEvent:FireClient(player, "Lucky Harvest! You got a Candy Blossom seed!")
+    end)
+    
+else
+    -------------------------------
+    -- CLIENT SIDE
+    -------------------------------
+    local player = Players.LocalPlayer
+    local lhEvent = getLuckyHarvestEvent()
+    
+    -- Create a simple ScreenGui with a button to trigger lucky harvest.
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "LuckyHarvestGui"
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 300, 0, 50)
+    button.Position = UDim2.new(0.5, -150, 0.5, -25)
+    button.Text = "Lucky Harvest!"
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 24
+    button.BackgroundColor3 = Color3.fromRGB(0,200,0)
+    button.TextColor3 = Color3.new(1,1,1)
+    button.Parent = screenGui
+
+    button.MouseButton1Click:Connect(function()
+        print("[Client] " .. player.Name .. " requested Lucky Harvest")
+        lhEvent:FireServer()
+    end)
+    
+    lhEvent.OnClientEvent:Connect(function(message)
+        -- Use the game’s internal notification system if available.
+        -- (If the game uses a custom notification function, that code would be called automatically.)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Lucky Harvest!";
+                Text = message or "Lucky Harvest! You got a Candy Blossom seed!";
+                Duration = 3;
+            })
+        end)
+    end)
+end
