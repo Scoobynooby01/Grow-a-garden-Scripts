@@ -1,0 +1,335 @@
+--[[
+   Grow A Garden: Spawner GUI with Dedicated Lucky Harvest Button
+   ----------------------------------------------------------------
+   This script creates a GUI with four sections:
+     • Pet Spawner  – enter Pet Name, Weight (Kg), and Age.
+     • Egg Spawner  – enter Egg Name.
+     • Seed Spawner – enter Seed Name.
+     • Lucky Harvest – a button to spawn Candy Blossom directly.
+     
+   Besides the standard spawners, the Lucky Harvest section gives you a dedicated
+   button that, when clicked, spawns the "Candy Blossom" bonus item immediately.
+     
+   Expected structure in ReplicatedStorage:
+     • petregistry
+         └─ petstatesregistry  (contains pet models)
+     • petEggShop
+         └─ Peteggs  (contains egg models)
+     • Modules
+         └─ seedshop controller  (optional, to spawn seeds via module)
+     • BonusItems
+         └─ CandyBlossom  (model for bonus Candy Blossom; or a dummy part will be created)
+--]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- CONFIG: Chance for lucky harvest when using the other spawners (not used for the dedicated button).
+local LUCKY_CHANCE_PERCENT = 10
+
+-- Returns true if the chance succeeds
+local function isLucky()
+    return math.random(1, 100) <= LUCKY_CHANCE_PERCENT
+end
+
+-- Spawns a Candy Blossom (lucky harvest bonus).
+local function spawnCandyBlossom()
+    local bonusFolder = ReplicatedStorage:FindFirstChild("BonusItems")
+    local candyModel
+    if bonusFolder then
+        candyModel = bonusFolder:FindFirstChild("CandyBlossom")
+    end
+    local spawnPos = hrp.Position + Vector3.new(0, 5, 0)
+    if candyModel then
+        local candyClone = candyModel:Clone()
+        candyClone.Parent = workspace
+        if candyClone:IsA("Model") then
+            if candyClone.PrimaryPart then
+                candyClone:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+            else
+                candyClone:MoveTo(spawnPos)
+            end
+        elseif candyClone:IsA("BasePart") then
+            candyClone.Position = spawnPos
+        end
+        print("Lucky Harvest! Candy Blossom spawned!")
+    else
+        -- Fallback: spawn a dummy Candy Blossom as a ball.
+        local dummy = Instance.new("Part")
+        dummy.Name = "CandyBlossom"
+        dummy.Size = Vector3.new(2, 2, 2)
+        dummy.Shape = Enum.PartType.Ball
+        dummy.Color = Color3.new(1, 0.5, 1)
+        dummy.Parent = workspace
+        dummy.Position = spawnPos
+
+        local billboard = Instance.new("BillboardGui", dummy)
+        billboard.Size = UDim2.new(0, 100, 0, 50)
+        billboard.Adornee = dummy
+        billboard.AlwaysOnTop = true
+
+        local label = Instance.new("TextLabel", billboard)
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = "Candy Blossom!"
+        label.Font = Enum.Font.GothamBold
+        label.TextScaled = true
+        label.TextColor3 = Color3.new(1, 1, 1)
+        print("Lucky Harvest (Fallback)! Dummy Candy Blossom spawned!")
+    end
+end
+
+-- Fixed spawn position: 5 studs above the player's HumanoidRootPart.
+local function getSpawnPosition()
+    return hrp.Position + Vector3.new(0, 5, 0)
+end
+
+-------------------------------------------------
+-- GUI Setup
+-------------------------------------------------
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SpawnerGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 500, 0, 600)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -300)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.Parent = screenGui
+
+local UIListLayout = Instance.new("UIListLayout", mainFrame)
+UIListLayout.FillDirection = Enum.FillDirection.Vertical
+UIListLayout.Padding = UDim.new(0, 10)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Helper function: creates a header label.
+local function createHeader(text)
+    local header = Instance.new("TextLabel")
+    header.Size = UDim2.new(1, -20, 0, 40)
+    header.BackgroundTransparency = 1
+    header.Text = text
+    header.Font = Enum.Font.GothamBold
+    header.TextSize = 24
+    header.TextColor3 = Color3.new(1, 1, 1)
+    header.Parent = mainFrame
+end
+
+-- Helper function: creates an input field with a label.
+local function createInput(labelText)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -20, 0, 30)
+    container.BackgroundTransparency = 1
+    container.Parent = mainFrame
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 120, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 20
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Parent = container
+
+    local inputBox = Instance.new("TextBox")
+    inputBox.Size = UDim2.new(0, 200, 1, 0)
+    inputBox.Position = UDim2.new(0, 130, 0, 0)
+    inputBox.Font = Enum.Font.Gotham
+    inputBox.TextSize = 20
+    inputBox.TextColor3 = Color3.new(0, 0, 0)
+    inputBox.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+    inputBox.Parent = container
+
+    return inputBox
+end
+
+-- Helper function: creates a button.
+local function createButton(text)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, -20, 0, 40)
+    button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    button.Text = text
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 22
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.Parent = mainFrame
+    return button
+end
+
+-------------------------------------------------
+-- Pet Spawner Section
+-------------------------------------------------
+createHeader("Pet Spawner")
+local petNameBox = createInput("Pet Name:")
+local petWeightBox = createInput("Weight (Kg):")
+local petAgeBox = createInput("Age:")
+
+local petSpawnButton = createButton("Spawn Pet")
+
+petSpawnButton.MouseButton1Click:Connect(function()
+    local petName = petNameBox.Text
+    local petWeight = tonumber(petWeightBox.Text) or 0
+    local petAge = tonumber(petAgeBox.Text) or 0
+
+    local petRegistry = ReplicatedStorage:FindFirstChild("petregistry")
+    local spawned = false
+    if petRegistry then
+        local petStates = petRegistry:FindFirstChild("petstatesregistry")
+        if petStates and #petStates:GetChildren() > 0 then
+            local petModels = petStates:GetChildren()
+            local chosenPet = petModels[math.random(1, #petModels)]
+            local petClone = chosenPet:Clone()
+            if petName ~= "" then
+                petClone.Name = petName
+            end
+            petClone:SetAttribute("Weight", petWeight)
+            petClone:SetAttribute("Age", petAge)
+            
+            petClone.Parent = workspace
+            local spawnPos = getSpawnPosition()
+            if petClone:IsA("Model") then
+                if petClone.PrimaryPart then
+                    petClone:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+                else
+                    petClone:MoveTo(spawnPos)
+                end
+            elseif petClone:IsA("BasePart") then
+                petClone.Position = spawnPos
+            end
+            spawned = true
+            print("Pet spawned: " .. petClone.Name)
+        else
+            warn("No pet models available in petstatesregistry")
+        end
+    else
+        warn("petregistry not found in ReplicatedStorage")
+    end
+
+    if spawned and isLucky() then
+        spawnCandyBlossom()
+    end
+end)
+
+-------------------------------------------------
+-- Egg Spawner Section
+-------------------------------------------------
+createHeader("Egg Spawner")
+local eggNameBox = createInput("Egg Name:")
+
+local eggSpawnButton = createButton("Spawn Egg")
+
+eggSpawnButton.MouseButton1Click:Connect(function()
+    local eggName = eggNameBox.Text
+
+    local petEggShop = ReplicatedStorage:FindFirstChild("petEggShop")
+    local spawned = false
+    if petEggShop then
+        local eggModelsFolder = petEggShop:FindFirstChild("Peteggs")
+        if eggModelsFolder and #eggModelsFolder:GetChildren() > 0 then
+            local eggModels = eggModelsFolder:GetChildren()
+            local chosenEgg = eggModels[math.random(1, #eggModels)]
+            local eggClone = chosenEgg:Clone()
+            if eggName ~= "" then
+                eggClone.Name = eggName
+            end
+
+            eggClone.Parent = workspace
+            local spawnPos = getSpawnPosition()
+            if eggClone:IsA("Model") then
+                if eggClone.PrimaryPart then
+                    eggClone:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+                else
+                    eggClone:MoveTo(spawnPos)
+                end
+            elseif eggClone:IsA("BasePart") then
+                eggClone.Position = spawnPos
+            end
+            spawned = true
+            print("Egg spawned: " .. eggClone.Name)
+        else
+            warn("No egg models available in Peteggs")
+        end
+    else
+        warn("petEggShop not found in ReplicatedStorage")
+    end
+
+    if spawned and isLucky() then
+        spawnCandyBlossom()
+    end
+end)
+
+-------------------------------------------------
+-- Seed Spawner Section
+-------------------------------------------------
+createHeader("Seed Spawner")
+local seedNameBox = createInput("Seed Name:")
+
+local seedSpawnButton = createButton("Spawn Seed")
+
+seedSpawnButton.MouseButton1Click:Connect(function()
+    local seedName = seedNameBox.Text
+    local spawned = false
+
+    -- Try to use the seed module from ReplicatedStorage.Modules.
+    local seedModuleContainer = ReplicatedStorage:FindFirstChild("Modules")
+    local usedModule = false
+    if seedModuleContainer then
+        local seedShopController = seedModuleContainer:FindFirstChild("seedshop controller")
+        if seedShopController then
+            local controller = require(seedShopController)
+            if type(controller.spawnSeed) == "function" then
+                pcall(function()
+                    controller.spawnSeed(player, seedName)
+                end)
+                usedModule = true
+                spawned = true
+                print("Seed spawned via module with name: " .. seedName)
+            end
+        end
+    end
+
+    -- Fallback: spawn a dummy seed part.
+    if not usedModule then
+        local seedPart = Instance.new("Part")
+        seedPart.Name = (seedName ~= "" and seedName) or "Seed"
+        seedPart.Size = Vector3.new(1, 1, 1)
+        seedPart.Shape = Enum.PartType.Ball
+        seedPart.Color = Color3.fromRGB(102, 51, 0)
+        seedPart.Parent = workspace
+        local spawnPos = getSpawnPosition()
+        seedPart.Position = spawnPos
+
+        local billboard = Instance.new("BillboardGui", seedPart)
+        billboard.Size = UDim2.new(0, 100, 0, 50)
+        billboard.Adornee = seedPart
+        billboard.AlwaysOnTop = true
+        local label = Instance.new("TextLabel", billboard)
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = seedPart.Name
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.Font = Enum.Font.GothamBold
+        label.TextScaled = true
+
+        spawned = true
+        print("Seed spawned as dummy part: " .. seedPart.Name)
+    end
+
+    if spawned and isLucky() then
+        spawnCandyBlossom()
+    end
+end)
+
+-------------------------------------------------
+-- Dedicated Lucky Harvest Section
+-------------------------------------------------
+createHeader("Lucky Harvest")
+local luckyHarvestButton = createButton("Spawn Candy Blossom")
+
+luckyHarvestButton.MouseButton1Click:Connect(function()
+    spawnCandyBlossom()
+end)
