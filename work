@@ -1,0 +1,168 @@
+-- Combined Admin Menu (Place in StarterGui as a LocalScript)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+-- Wait for required RemoteEvents in ReplicatedStorage.
+local adminAuthEvent = ReplicatedStorage:WaitForChild("AdminAuthEvent")
+local adminCommandEvent = ReplicatedStorage:WaitForChild("AdminCommandEvent")
+
+-------------------------------------------------
+-- Create the Main GUI
+-------------------------------------------------
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AdminMenuGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+-- Main container frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 400, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+mainFrame.Parent = screenGui
+
+-------------------------------------------------
+-- Create the Login Panel
+-------------------------------------------------
+
+local loginPanel = Instance.new("Frame")
+loginPanel.Size = UDim2.new(1, 0, 0.4, 0)
+loginPanel.Position = UDim2.new(0, 0, 0, 0)
+loginPanel.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+loginPanel.Parent = mainFrame
+
+local loginLabel = Instance.new("TextLabel")
+loginLabel.Size = UDim2.new(1, 0, 0.3, 0)
+loginLabel.Position = UDim2.new(0, 0, 0, 0)
+loginLabel.BackgroundTransparency = 1
+loginLabel.Text = "Admin Login"
+loginLabel.Font = Enum.Font.GothamBold
+loginLabel.TextSize = 24
+loginLabel.TextColor3 = Color3.new(1, 1, 1)
+loginLabel.Parent = loginPanel
+
+local passwordBox = Instance.new("TextBox")
+passwordBox.Size = UDim2.new(0.8, 0, 0.3, 0)
+passwordBox.Position = UDim2.new(0.1, 0, 0.35, 0)
+passwordBox.PlaceholderText = "Enter admin password"
+passwordBox.Font = Enum.Font.Gotham
+passwordBox.TextSize = 22
+passwordBox.TextColor3 = Color3.new(0, 0, 0)
+passwordBox.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+passwordBox.Parent = loginPanel
+
+local loginButton = Instance.new("TextButton")
+loginButton.Size = UDim2.new(0.5, 0, 0.25, 0)
+loginButton.Position = UDim2.new(0.25, 0, 0.7, 0)
+loginButton.Text = "Login"
+loginButton.Font = Enum.Font.GothamBold
+loginButton.TextSize = 22
+loginButton.TextColor3 = Color3.new(1, 1, 1)
+loginButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+loginButton.Parent = loginPanel
+
+-------------------------------------------------
+-- Create the Admin Command Panel (initially hidden)
+-------------------------------------------------
+
+local commandPanel = Instance.new("Frame")
+commandPanel.Size = UDim2.new(1, 0, 0.6, 0)
+commandPanel.Position = UDim2.new(0, 0, 0.4, 0)
+commandPanel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+commandPanel.Parent = mainFrame
+commandPanel.Visible = false  -- shown only after successful auth
+
+local commandLabel = Instance.new("TextLabel")
+commandLabel.Size = UDim2.new(1, 0, 0.2, 0)
+commandLabel.Position = UDim2.new(0, 0, 0, 0)
+commandLabel.BackgroundTransparency = 1
+commandLabel.Text = "Admin Commands"
+commandLabel.Font = Enum.Font.GothamBold
+commandLabel.TextSize = 24
+commandLabel.TextColor3 = Color3.new(1, 1, 1)
+commandLabel.Parent = commandPanel
+
+-------------------------------------------------
+-- Create a Section for the "Give Seed" Command
+-------------------------------------------------
+
+local seedSection = Instance.new("Frame")
+seedSection.Size = UDim2.new(0.9, 0, 0.3, 0)
+seedSection.Position = UDim2.new(0.05, 0, 0.25, 0)
+seedSection.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+seedSection.Parent = commandPanel
+
+local seedLabel = Instance.new("TextLabel")
+seedLabel.Size = UDim2.new(1, 0, 0.3, 0)
+seedLabel.Position = UDim2.new(0, 0, 0, 0)
+seedLabel.BackgroundTransparency = 1
+seedLabel.Text = "Give Seed Command"
+seedLabel.Font = Enum.Font.GothamBold
+seedLabel.TextSize = 20
+seedLabel.TextColor3 = Color3.new(1, 1, 1)
+seedLabel.Parent = seedSection
+
+local seedNameBox = Instance.new("TextBox")
+seedNameBox.Size = UDim2.new(0.6, 0, 0.3, 0)
+seedNameBox.Position = UDim2.new(0.05, 0, 0.35, 0)
+seedNameBox.PlaceholderText = "Seed Name"
+seedNameBox.Font = Enum.Font.Gotham
+seedNameBox.TextSize = 20
+seedNameBox.TextColor3 = Color3.new(0, 0, 0)
+seedNameBox.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+seedNameBox.Parent = seedSection
+
+local seedQuantityBox = Instance.new("TextBox")
+seedQuantityBox.Size = UDim2.new(0.3, 0, 0.3, 0)
+seedQuantityBox.Position = UDim2.new(0.7, 0, 0.35, 0)
+seedQuantityBox.PlaceholderText = "Qty"
+seedQuantityBox.Font = Enum.Font.Gotham
+seedQuantityBox.TextSize = 20
+seedQuantityBox.TextColor3 = Color3.new(0, 0, 0)
+seedQuantityBox.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+seedQuantityBox.Parent = seedSection
+
+local seedCommandButton = Instance.new("TextButton")
+seedCommandButton.Size = UDim2.new(0.8, 0, 0.25, 0)
+seedCommandButton.Position = UDim2.new(0.1, 0, 0.7, 0)
+seedCommandButton.Text = "Give Seed"
+seedCommandButton.Font = Enum.Font.GothamBold
+seedCommandButton.TextSize = 22
+seedCommandButton.TextColor3 = Color3.new(1, 1, 1)
+seedCommandButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+seedCommandButton.Parent = seedSection
+
+-------------------------------------------------
+-- Client-Side Event Handling
+-------------------------------------------------
+
+-- Listen for the admin authentication response.
+adminAuthEvent.OnClientEvent:Connect(function(success)
+    if success then
+        print("Authenticated as admin!")
+        loginPanel.Visible = false
+        commandPanel.Visible = true
+    else
+        print("Admin authentication failed!")
+        -- You can show an error message here if needed.
+    end
+end)
+
+-- When the login button is clicked, send the password to the server.
+loginButton.MouseButton1Click:Connect(function()
+    local password = passwordBox.Text
+    adminAuthEvent:FireServer(password)
+end)
+
+-- When the seed command button is clicked, fire the admin command event.
+seedCommandButton.MouseButton1Click:Connect(function()
+    local seedName = seedNameBox.Text
+    local quantity = tonumber(seedQuantityBox.Text) or 1
+    adminCommandEvent:FireServer("GiveSeed", { seedName = seedName, quantity = quantity })
+    print("Fired GiveSeed command: " .. seedName .. " x" .. quantity)
+end)
+
+-- You can add extra sections for additional admin commands similarly.
