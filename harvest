@@ -1,0 +1,90 @@
+-- Unified Lucky Harvest Code (Server + Client in one file)
+-- File references are based exactly on the decompiled Give_Seed code for Grow A Garden
+
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local ServerStorage = game:GetService("ServerStorage")
+
+-- Utility: Ensure the RemoteEvent exists.
+local function getLuckyHarvestEvent()
+    local event = ReplicatedStorage:FindFirstChild("LuckyHarvestEvent")
+    if not event then
+        event = Instance.new("RemoteEvent")
+        event.Name = "LuckyHarvestEvent"
+        event.Parent = ReplicatedStorage
+    end
+    return event
+end
+
+-- This variable holds the exact seed name we want to award—in your case, "CandyBlossom"
+local SEED_NAME = "CandyBlossom"
+local SEED_QTY = 1
+
+if RunService:IsServer() then
+    -- SERVER SIDE
+    local ServerScriptService = game:GetService("ServerScriptService")
+    
+    -- Use the exact file structure from your decompiled code:
+    -- Your Give_Seed module must be stored as ServerScriptService.Modules.GiveSeed
+    local GiveSeedModule = require(ServerScriptService.Modules.GiveSeed)
+    
+    local event = getLuckyHarvestEvent()
+    print("[Server] LuckyHarvestEvent active. Listening for requests...")
+    
+    event.OnServerEvent:Connect(function(player)
+        -- Award the seed using the in-game function exactly as in your module.
+        local success, err = pcall(function()
+            GiveSeedModule.Give_Seed(player, SEED_NAME, SEED_QTY)
+        end)
+        if success then
+            print("[Server] Awarded " .. SEED_NAME .. " to " .. player.Name)
+            -- Send confirmation back to the client (this mirrors in-game behavior)
+            event:FireClient(player, "Lucky Harvest! You got a " .. SEED_NAME .. " seed!")
+        else
+            warn("[Server] Give_Seed failed for " .. player.Name .. ": " .. tostring(err))
+        end
+    end)
+    
+else
+    -- CLIENT SIDE
+    local player = Players.LocalPlayer
+    local event = getLuckyHarvestEvent()
+    
+    -- Create a GUI for Lucky Harvest that uses the exact in-game notification style.
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "LuckyHarvestGui"
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+    
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 300, 0, 50)
+    button.Position = UDim2.new(0.5, -150, 0.5, -25)
+    button.Text = "Lucky Harvest!"
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 24
+    button.BackgroundColor3 = Color3.fromRGB(0,200,0)
+    button.TextColor3 = Color3.new(1,1,1)
+    button.Parent = screenGui
+    
+    button.MouseButton1Click:Connect(function()
+        print("[Client] " .. player.Name .. " requested Lucky Harvest")
+        -- Fire the event to the server; no extra parameters needed as seed name and qty are preset.
+        event:FireServer()
+        -- Immediately display notification locally (exactly as the game does)
+        StarterGui:SetCore("SendNotification", {
+            Title = "Lucky Harvest!";
+            Text = "Lucky Harvest! You got a " .. SEED_NAME .. " seed!";
+            Duration = 3;
+        })
+    end)
+    
+    event.OnClientEvent:Connect(function(message)
+        StarterGui:SetCore("SendNotification", {
+            Title = "Lucky Harvest!";
+            Text = message,
+            Duration = 3,
+        })
+    end)
+end
