@@ -1,0 +1,62 @@
+local function spawnCustomPet(petName, weight, age)
+    local petRegistry = ReplicatedStorage:FindFirstChild("petregistry")
+    if not petRegistry then
+        warn("'petregistry' not found.")
+        return
+    end
+
+    local petModelsFolder = petRegistry:FindFirstChild("petstatesregistry")
+    if not petModelsFolder or #petModelsFolder:GetChildren() == 0 then
+        warn("No pet models available in 'petstatesregistry'.")
+        return
+    end
+
+    local petModels = petModelsFolder:GetChildren()
+    local chosenPet = petModels[math.random(1, #petModels)]
+    -- Assume the original model has an attribute "PetID" that holds its unique identifier.
+    local petID = chosenPet:GetAttribute("PetID") or "UnknownID"
+    
+    local petClone = chosenPet:Clone()
+
+    -- Optionally, if the user provided a custom name use it and append the petID:
+    if petName and petName ~= "" then
+        petClone.Name = petName .. " (" .. petID .. ")"
+    else
+        petClone.Name = chosenPet.Name .. " (" .. petID .. ")"
+    end
+
+    -- Save the pet's ID as an attribute on the clone:
+    petClone:SetAttribute("PetID", petID)
+    petClone:SetAttribute("Weight", tonumber(weight) or 0)
+    petClone:SetAttribute("Age", tonumber(age) or 0)
+    
+    -- For Grow A Garden the pet should go to your inventory (Backpack) or be handled via a remote event.
+    petClone.Parent = player.Backpack
+
+    -- Optionally, set positioning if needed (if the pet is visible immediately)
+    local spawnPos = hrp.Position + Vector3.new(0, 5, 0)
+    if petClone:IsA("Model") then
+        if petClone.PrimaryPart then
+            petClone:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+        else
+            petClone:MoveTo(spawnPos)
+        end
+    elseif petClone:IsA("BasePart") then
+        petClone.Position = spawnPos
+    else
+        warn("Spawned pet is not a Model or a BasePart.")
+    end
+
+    -- Optionally, call the remote event to register the pet on the server:
+    local gameEvents = ReplicatedStorage:FindFirstChild("GameEvents")
+    if gameEvents then
+        local petGiftingService = gameEvents:FindFirstChild("PetGiftingService")
+        if petGiftingService then
+            pcall(function()
+                petGiftingService:FireServer("GivePet", petClone)
+            end)
+        else
+            warn("Remote event 'PetGiftingService' not found.")
+        end
+    end
+end
