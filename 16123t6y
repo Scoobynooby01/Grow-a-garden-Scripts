@@ -1,0 +1,33 @@
+--[[ 
+    Server Command Handler for Giving Seeds
+    This script listens for a remote event command (here "GiveSeed") and calls the already existing Give_Seed function,
+    which should award the Candy Blossom seed to the player.
+--]]
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+-- Make sure your remote event exists in ReplicatedStorage.
+local adminCommandEvent = ReplicatedStorage:FindFirstChild("AdminCommandEvent")
+if not adminCommandEvent then
+    adminCommandEvent = Instance.new("RemoteEvent")
+    adminCommandEvent.Name = "AdminCommandEvent"
+    adminCommandEvent.Parent = ReplicatedStorage
+end
+
+adminCommandEvent.OnServerEvent:Connect(function(player, command, args)
+    if command == "GiveSeed" then
+        local seedName = args.seedName or ""
+        local quantity = args.quantity or 1
+        
+        -- Call your pre-existing seed-giving function.
+        local giveSeedModule = require(ServerScriptService.Modules.GiveSeed)
+        local success, err = pcall(function()
+            giveSeedModule.Give_Seed(player, seedName, quantity)
+        end)
+        if success then
+            print(player.Name .. " has been given the seed: " .. seedName)
+        else
+            warn("GiveSeed command failed: " .. tostring(err))
+        end
+    end
+end)
