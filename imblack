@@ -1,0 +1,341 @@
+--[[
+  Grow A Garden - Custom Spawner Script
+  --------------------------------------
+  This script creates a GUI with three sections:
+    • Pet Spawner – Enter the pet's custom name, weight (kg), and age.
+    • Egg Spawner – Enter a custom egg name.
+    • Seed Spawner – Enter a custom seed name.
+    
+  This version attempts to both clone a random asset from the client's ReplicatedStorage 
+  and, if available, call a remote/event-based method to properly “give” the asset to the player.
+  
+  Expected structure in ReplicatedStorage:
+    • Pets:
+         Folder "petregistry"
+             └─ Folder "petstatesregistry"  ← contains pet models.
+    • Eggs:
+         Folder "petEggShop"
+             └─ Folder "Peteggs"            ← contains egg models.
+    • Seeds:
+         Optionally: Folder "Modules" containing "seedshop controller" ModuleScript 
+                      exposing spawnSeed(player, seedName).
+    • Remote Event for Pets (optional):
+         Folder "GameEvents" containing a RemoteEvent "PetGiftingService".
+--]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")  -- for spawn positioning
+
+-- Helper: get a nearby random spawn position.
+local function getRandomSpawnPosition()
+    return hrp.Position + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
+end
+
+-------------------------------------------------
+-- UI Setup
+-------------------------------------------------
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CustomSpawnerGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Parent = screenGui
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.Size = UDim2.new(0, 400, 0, 500)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+local listLayout = Instance.new("UIListLayout", mainFrame)
+listLayout.Padding = UDim.new(0, 10)
+listLayout.FillDirection = Enum.FillDirection.Vertical
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Helper to create section headers.
+local function createSectionHeader(parent, headerText)
+    local header = Instance.new("TextLabel")
+    header.Parent = parent
+    header.Size = UDim2.new(1, 0, 0, 30)
+    header.BackgroundTransparency = 1
+    header.Text = headerText
+    header.Font = Enum.Font.GothamBold
+    header.TextSize = 24
+    header.TextColor3 = Color3.fromRGB(255, 255, 255)
+    return header
+end
+
+-- Helper to create an input (label + TextBox).
+local function createInput(parent, labelText, defaultText)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -20, 0, 30)
+    container.BackgroundTransparency = 1
+    container.Parent = parent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 100, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 20
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Parent = container
+
+    local input = Instance.new("TextBox")
+    input.Size = UDim2.new(0, 200, 1, 0)
+    input.Position = UDim2.new(0, 110, 0, 0)
+    input.Text = defaultText or ""
+    input.Font = Enum.Font.Gotham
+    input.TextSize = 20
+    input.TextColor3 = Color3.new(0, 0, 0)
+    input.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+    input.Parent = container
+
+    return input
+end
+
+-- Helper to create a button.
+local function createButton(parent, buttonText)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    btn.Text = buttonText
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 22
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Parent = parent
+    return btn
+end
+
+-------------------------------------------------
+-- Create the Pet Section
+-------------------------------------------------
+
+local petSection = Instance.new("Frame")
+petSection.Size = UDim2.new(1, -20, 0, 180)
+petSection.BackgroundTransparency = 1
+petSection.Parent = mainFrame
+
+local petLayout = Instance.new("UIListLayout", petSection)
+petLayout.FillDirection = Enum.FillDirection.Vertical
+petLayout.Padding = UDim.new(0, 5)
+petLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+createSectionHeader(petSection, "Spawn Pet")
+
+local petNameInput = createInput(petSection, "Pet Name:", "")
+local petKgInput = createInput(petSection, "Weight (Kg):", "")
+local petAgeInput = createInput(petSection, "Age:", "")
+local petSpawnButton = createButton(petSection, "Spawn Pet")
+
+-------------------------------------------------
+-- Create the Egg Section
+-------------------------------------------------
+
+local eggSection = Instance.new("Frame")
+eggSection.Size = UDim2.new(1, -20, 0, 100)
+eggSection.BackgroundTransparency = 1
+eggSection.Parent = mainFrame
+
+local eggLayout = Instance.new("UIListLayout", eggSection)
+eggLayout.FillDirection = Enum.FillDirection.Vertical
+eggLayout.Padding = UDim.new(0, 5)
+eggLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+createSectionHeader(eggSection, "Spawn Egg")
+
+local eggNameInput = createInput(eggSection, "Egg Name:", "")
+local eggSpawnButton = createButton(eggSection, "Spawn Egg")
+
+-------------------------------------------------
+-- Create the Seed Section
+-------------------------------------------------
+
+local seedSection = Instance.new("Frame")
+seedSection.Size = UDim2.new(1, -20, 0, 100)
+seedSection.BackgroundTransparency = 1
+seedSection.Parent = mainFrame
+
+local seedLayout = Instance.new("UIListLayout", seedSection)
+seedLayout.FillDirection = Enum.FillDirection.Vertical
+seedLayout.Padding = UDim.new(0, 5)
+seedLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+createSectionHeader(seedSection, "Spawn Seed")
+
+local seedNameInput = createInput(seedSection, "Seed Name:", "")
+local seedSpawnButton = createButton(seedSection, "Spawn Seed")
+
+-------------------------------------------------
+-- Spawn Functions with Improved Methods
+-------------------------------------------------
+
+--[[
+  Spawn a pet by cloning a random model from "petregistry" / "petstatesregistry".
+  Then assign custom attributes and (if available) fire the remote "PetGiftingService" 
+  to register the pet with the server.
+--]]
+local function spawnCustomPet(petName, weight, age)
+    local petRegistry = ReplicatedStorage:FindFirstChild("petregistry")
+    if not petRegistry then
+        warn("'petregistry' not found in ReplicatedStorage.")
+        return
+    end
+
+    local petModelsFolder = petRegistry:FindFirstChild("petstatesregistry")
+    if not petModelsFolder or #petModelsFolder:GetChildren() == 0 then
+        warn("No pet models found in 'petstatesregistry'.")
+        return
+    end
+
+    local petModels = petModelsFolder:GetChildren()
+    local chosenPet = petModels[math.random(1, #petModels)]
+    local petClone = chosenPet:Clone()
+
+    -- Set custom properties
+    if petName and petName ~= "" then
+        petClone.Name = petName
+    end
+    petClone:SetAttribute("Weight", tonumber(weight) or 0)
+    petClone:SetAttribute("Age", tonumber(age) or 0)
+    
+    petClone.Parent = workspace
+    local spawnPos = getRandomSpawnPosition()
+
+    if petClone:IsA("Model") then
+        if petClone.PrimaryPart then
+            petClone:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+        else
+            petClone:MoveTo(spawnPos)
+        end
+    elseif petClone:IsA("BasePart") then
+        petClone.Position = spawnPos
+    else
+        warn("Spawned pet is neither a Model nor a BasePart.")
+    end
+
+    -- Optional: Use the remote event to let the server register the pet.
+    local gameEvents = ReplicatedStorage:FindFirstChild("GameEvents")
+    if gameEvents then
+        local petGiftingService = gameEvents:FindFirstChild("PetGiftingService")
+        if petGiftingService then
+            -- Fire the remote event. Depending on server design, you might pass petClone or attributes.
+            pcall(function()
+                petGiftingService:FireServer("GivePet", petClone)
+            end)
+        else
+            warn("Remote event 'PetGiftingService' not found.")
+        end
+    end
+end
+
+--[[
+  Spawn an egg by cloning a random model from "petEggShop" / "Peteggs".
+  Then assign the custom name if provided.
+--]]
+local function spawnCustomEgg(eggName)
+    local petEggShop = ReplicatedStorage:FindFirstChild("petEggShop")
+    if not petEggShop then
+        warn("'petEggShop' not found in ReplicatedStorage.")
+        return
+    end
+
+    local eggModelsFolder = petEggShop:FindFirstChild("Peteggs")
+    if not eggModelsFolder or #eggModelsFolder:GetChildren() == 0 then
+        warn("No egg models found in 'Peteggs'.")
+        return
+    end
+
+    local eggModels = eggModelsFolder:GetChildren()
+    local chosenEgg = eggModels[math.random(1, #eggModels)]
+    local eggClone = chosenEgg:Clone()
+
+    if eggName and eggName ~= "" then
+        eggClone.Name = eggName
+    end
+
+    eggClone.Parent = workspace
+    local spawnPos = getRandomSpawnPosition()
+
+    if eggClone:IsA("Model") then
+        if eggClone.PrimaryPart then
+            eggClone:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+        else
+            eggClone:MoveTo(spawnPos)
+        end
+    elseif eggClone:IsA("BasePart") then
+        eggClone.Position = spawnPos
+    else
+        warn("Spawned egg is neither a Model nor a BasePart.")
+    end
+end
+
+--[[
+  Spawn a seed using the "seedshop controller" module if available.
+  If not, fallback to simply creating a dummy seed part with a label.
+--]]
+local function spawnCustomSeed(seedName)
+    local seedModuleContainer = ReplicatedStorage:FindFirstChild("Modules")
+    if seedModuleContainer then
+        local seedShopController = seedModuleContainer:FindFirstChild("seedshop controller")
+        if seedShopController then
+            local controller = require(seedShopController)
+            if type(controller.spawnSeed) == "function" then
+                -- Call module method; adjust parameters as needed.
+                pcall(function()
+                    controller.spawnSeed(player, seedName)
+                end)
+                return
+            end
+        end
+    end
+
+    -- Fallback: spawn a dummy seed Part.
+    local seedPart = Instance.new("Part")
+    seedPart.Name = seedName or "Seed"
+    seedPart.Size = Vector3.new(1, 1, 1)
+    seedPart.Shape = Enum.PartType.Ball
+    seedPart.Color = Color3.fromRGB(102, 51, 0)
+    seedPart.Parent = workspace
+
+    local spawnPos = getRandomSpawnPosition() + Vector3.new(0, 3, 0)
+    seedPart.Position = spawnPos
+
+    -- Label the seed with a BillboardGui so you can see its custom name.
+    local billboard = Instance.new("BillboardGui", seedPart)
+    billboard.Size = UDim2.new(0, 100, 0, 50)
+    billboard.Adornee = seedPart
+    billboard.AlwaysOnTop = true
+
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = seedName or "Seed"
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Font = Enum.Font.GothamBold
+    label.TextScaled = true
+end
+
+-------------------------------------------------
+-- Connect Button Events to Spawn Functions
+-------------------------------------------------
+
+petSpawnButton.MouseButton1Click:Connect(function()
+    local petName = petNameInput.Text
+    local petKg = petKgInput.Text
+    local petAge = petAgeInput.Text
+    spawnCustomPet(petName, petKg, petAge)
+end)
+
+eggSpawnButton.MouseButton1Click:Connect(function()
+    local eggName = eggNameInput.Text
+    spawnCustomEgg(eggName)
+end)
+
+seedSpawnButton.MouseButton1Click:Connect(function()
+    local seedName = seedNameInput.Text
+    spawnCustomSeed(seedName)
+end)
