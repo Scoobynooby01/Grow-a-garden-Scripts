@@ -1,0 +1,28 @@
+-- Client-side Lucky Harvest Button for Candy Blossom Seed
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Wait for the admin command event in ReplicatedStorage.
+local adminCommandEvent = ReplicatedStorage:WaitForChild("AdminCommandEvent")
+
+-- Create a simple GUI button.
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LuckyHarvestGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 250, 0, 50)
+button.Position = UDim2.new(0.5, -125, 0.5, -25)
+button.Text = "Lucky Harvest: Candy Blossom Seed"
+button.Font = Enum.Font.GothamBold
+button.TextSize = 22
+button.BackgroundColor3 = Color3.fromRGB(100, 0, 150)
+button.TextColor3 = Color3.new(1,1,1)
+button.Parent = screenGui
+
+button.MouseButton1Click:Connect(function()
+    -- Fire the remote event using existing command "GiveSeed" with the seed name "CandyBlossom"
+    adminCommandEvent:FireServer("GiveSeed", { seedName = "CandyBlossom", quantity = 1 })
+end)
