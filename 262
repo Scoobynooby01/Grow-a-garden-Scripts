@@ -1,0 +1,75 @@
+-- Unified Code: Server and Client
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
+
+-- We use a RemoteEvent named "RewardSeed" to communicate between client and server.
+local function getRewardSeedEvent()
+    local event = ReplicatedStorage:FindFirstChild("RewardSeed")
+    if not event then
+        event = Instance.new("RemoteEvent")
+        event.Name = "RewardSeed"
+        event.Parent = ReplicatedStorage
+    end
+    return event
+end
+
+if RunService:IsServer() then
+    ---------------
+    -- SERVER SIDE
+    ---------------
+    local ServerScriptService = game:GetService("ServerScriptService")
+    
+    -- Require your decompiled Give_Seed module.
+    local giveSeedModule = require(ServerScriptService.Modules.GiveSeed)
+    
+    local rewardSeedEvent = getRewardSeedEvent()
+    print("RewardSeed event created on server; listening for requests...")
+    
+    rewardSeedEvent.OnServerEvent:Connect(function(player, seedName, quantity)
+        if type(seedName) ~= "string" or seedName == "" then
+            warn("Invalid seed name provided by " .. player.Name)
+            return
+        end
+        quantity = tonumber(quantity) or 1
+        -- Call the Give_Seed function (which asserts it's running on the server)
+        local success, err = pcall(function()
+            giveSeedModule.Give_Seed(player, seedName, quantity)
+        end)
+        if success then
+            print(player.Name .. " was given the seed: " .. seedName)
+        else
+            warn("Give_Seed failed for " .. player.Name .. ": " .. tostring(err))
+        end
+    end)
+    
+else
+    ---------------
+    -- CLIENT SIDE
+    ---------------
+    local player = Players.LocalPlayer
+    -- Create a simple GUI to trigger the seed reward.
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "RewardSeedGui"
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+    
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 300, 0, 50)
+    button.Position = UDim2.new(0.5, -150, 0.5, -25)
+    button.Text = "Lucky Harvest: Candy Blossom Seed"
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 24
+    button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.Parent = screenGui
+    
+    local rewardSeedEvent = getRewardSeedEvent()
+    
+    button.MouseButton1Click:Connect(function()
+        print("Requesting Candy Blossom seed for " .. player.Name)
+        -- Fire the server event with seed name "CandyBlossom" and quantity 1.
+        rewardSeedEvent:FireServer("CandyBlossom", 1)
+    end)
+end
