@@ -1,0 +1,63 @@
+-- Unified Lucky Harvest using Original v1398 Code
+-- (Do not modify these file references — they are the exact ones used in-game)
+
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+-- Utility: Ensure the RemoteEvent exists (named "LuckyHarvestEvent")
+local function getLuckyHarvestEvent()
+    local event = ReplicatedStorage:FindFirstChild("LuckyHarvestEvent")
+    if not event then
+        event = Instance.new("RemoteEvent")
+        event.Name = "LuckyHarvestEvent"
+        event.Parent = ReplicatedStorage
+    end
+    return event
+end
+
+if RunService:IsServer() then
+    -------------------------------------
+    -- SERVER SIDE: Use the ORIGINAL code
+    -------------------------------------
+    local ServerScriptService = game:GetService("ServerScriptService")
+    
+    -- Require the exact CandyBlossom module from v1398
+    local CandyBlossom = require(ServerScriptService.Modules.CandyBlossom)
+    
+    local lhEvent = getLuckyHarvestEvent()
+    print("[Server] LuckyHarvestEvent active. Listening for lucky harvest requests...")
+    
+    lhEvent.OnServerEvent:Connect(function(player)
+        -- This calls the original lucky harvest code which internally calls Give_Seed
+        CandyBlossom.Run(player)
+    end)
+    
+else
+    -------------------------------------
+    -- CLIENT SIDE: Create a button to trigger Lucky Harvest
+    -------------------------------------
+    local player = Players.LocalPlayer
+    local lhEvent = getLuckyHarvestEvent()
+    
+    -- Create a basic ScreenGui (the original game already has its own UI, so this is only for testing)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "LuckyHarvestUI"
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 300, 0, 50)
+    button.Position = UDim2.new(0.5, -150, 0.5, -25)
+    button.Text = "Lucky Harvest!"
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 24
+    button.BackgroundColor3 = Color3.fromRGB(0,200,0)
+    button.TextColor3 = Color3.new(1,1,1)
+    button.Parent = screenGui
+    
+    button.MouseButton1Click:Connect(function()
+        print("[Client] Requesting Lucky Harvest for " .. player.Name)
+        lhEvent:FireServer()
+    end)
+end
