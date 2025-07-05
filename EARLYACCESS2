@@ -1,0 +1,4 @@
+local Amount = 1 --DO NOT DO math.huge OR DATA BROKEN
+for _ = 1,Amount do
+game:GetService("ReplicatedStorage").GameEvents.DinoMachineService_RE:FireServer("ClaimReward")
+end
