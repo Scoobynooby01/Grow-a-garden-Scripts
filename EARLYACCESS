@@ -1,0 +1,2 @@
+workspace.SummerHarvestEvent:Destroy()
+game:GetService("ReplicatedStorage").Modules.UpdateService.DinoEvent.Parent = workspace
